@@ -1,125 +1,84 @@
-from vpython import canvas, vector, box, color, sphere, scene, rate, curve
+import requests
+from vpython import canvas, vector, box, color, label, rate
+
+# Установить размеры карты
+MAP_SIZE = [180, 180, 180]
 
 
-class Snake3DVisualizer:
-    def __init__(self, map_size):
-        """Инициализация визуализатора."""
-        self.map_size = map_size
-        self.snakes = []
-        self.food = []
-        self.fences = []
+# ---------- Классы для визуализации ----------
+class SnakeMap:
+    def __init__(self, snake_data, position_offset, fences):
+        self.id = snake_data["id"]
+        # Центр камеры для каждого индивидуального представления
+        self.map_center = vector(*snake_data["geometry"][0]) + vector(*position_offset)
 
-        # Создание трех канвасов для каждой змеи
-        self.canvases = []
-        for i in range(3):
-            self.canvases.append(canvas(title=f"Snake {i + 1}", width=600, height=600, background=color.black))
+        # Инициализация отдельной сцены
+        self.scene = canvas(title=f"Snake {self.id}", width=600, height=600,
+                            center=self.map_center, forward=vector(0, 0, -1), align="right")
 
-        # Сетка в виде трехмерного куба
-        for c in self.canvases:
-            self._create_grid(c)
+        # Разбиение области координат на оси
+        self.draw_grid()
 
-    def _create_grid(self, canvas):
-        """Создание трехмерной сетки в виде пустых кубов."""
-        grid_color = color.gray(0.2)
-        half_size = vector(self.map_size[0] / 2, self.map_size[1] / 2, self.map_size[2] / 2)
+        # Задаем границы карты (основной контейнер)
+        self.grid = box(canvas=self.scene, pos=self.map_center,
+                        size=vector(*MAP_SIZE), opacity=0.1, color=color.white)
 
-        # Грани куба
-        edges = [
-            # Верхняя часть
-            [vector(-half_size.x, half_size.y, -half_size.z), vector(half_size.x, half_size.y, -half_size.z)],
-            [vector(half_size.x, half_size.y, -half_size.z), vector(half_size.x, half_size.y, half_size.z)],
-            [vector(half_size.x, half_size.y, half_size.z), vector(-half_size.x, half_size.y, half_size.z)],
-            [vector(-half_size.x, half_size.y, half_size.z), vector(-half_size.x, half_size.y, -half_size.z)],
-
-            # Нижняя часть
-            [vector(-half_size.x, -half_size.y, -half_size.z), vector(half_size.x, -half_size.y, -half_size.z)],
-            [vector(half_size.x, -half_size.y, -half_size.z), vector(half_size.x, -half_size.y, half_size.z)],
-            [vector(half_size.x, -half_size.y, half_size.z), vector(-half_size.x, -half_size.y, half_size.z)],
-            [vector(-half_size.x, -half_size.y, half_size.z), vector(-half_size.x, -half_size.y, -half_size.z)],
-
-            # Соединяющие ребра
-            [vector(-half_size.x, -half_size.y, -half_size.z), vector(-half_size.x, half_size.y, -half_size.z)],
-            [vector(half_size.x, -half_size.y, -half_size.z), vector(half_size.x, half_size.y, -half_size.z)],
-            [vector(half_size.x, -half_size.y, half_size.z), vector(half_size.x, half_size.y, half_size.z)],
-            [vector(-half_size.x, -half_size.y, half_size.z), vector(-half_size.x, half_size.y, half_size.z)],
+        # Преграды (зелёного цвета)
+        self.fences = [
+            box(canvas=self.scene, pos=vector(*fence), size=vector(2, 2, 2), color=color.green)
+            for fence in fences
         ]
 
-        for edge in edges:
-            curve(canvas=canvas, pos=edge, color=grid_color)
+        # Змейка
+        self.body = self.create_snake_body(snake_data["geometry"])
+        self.direction = vector(*snake_data["direction"])
+        self.head_label = label(canvas=self.scene, pos=self.body[0].pos,
+                                text=f"Head: {self.body[0].pos}", xoffset=10, yoffset=10, box=False, height=10)
 
-    def update_snakes(self, snake_data):
-        print(snake_data)
-        """Обновление позиций змей и привязка камеры к головам."""
-        for i, snake in enumerate(snake_data):
-            if i >= len(self.canvases):
-                break
+    def create_snake_body(self, geometry):
+        """Создает тело змеи (голубая голова, синее тело)."""
+        body_parts = []
+        for i, segment in enumerate(geometry):
+            color_part = color.cyan if i == 0 else color.blue  # Голубая голова, синее тело
+            body_parts.append(box(canvas=self.scene, pos=vector(*segment), size=vector(2, 2, 2), color=color_part))
+        return body_parts
 
-            canvas = self.canvases[i]
-            body_color = color.blue
-            head_color = color.cyan
+    def update(self, new_geometry, new_direction):
+        """Обновляет положение змеи."""
+        for i, segment in enumerate(new_geometry):
+            self.body[i].pos = vector(*segment)
 
-            # Очистка предыдущей змеи
-            if i < len(self.snakes):
-                for segment in self.snakes[i]:
-                    segment.visible = False
+        self.direction = vector(*new_direction)
 
-            # Создание змеи
-            snake_geometry = []
-            for idx, segment in enumerate(snake['geometry']):
-                segment_color = head_color if idx == 0 else body_color
-                snake_geometry.append(
-                    box(canvas=canvas, pos=vector(*segment), size=vector(1, 1, 1), color=segment_color)
-                )
+        # Обновляем метку для головы
+        self.head_label.pos = self.body[0].pos
+        self.head_label.text = f"Head: {self.body[0].pos}"
 
-            # Привязка камеры к голове змеи
-            if len(snake['geometry']) > 0:
-                canvas.center = vector(*snake['geometry'][0])  # Камера направлена в центр головы
-                canvas.forward = vector(0, -1, 0)  # Смотрит вниз
+        # Центрируем камеру на голову змеи
+        self.scene.center = self.body[0].pos
 
-            # Сохранение геометрии змеи
-            if i < len(self.snakes):
-                self.snakes[i] = snake_geometry
-            else:
-                self.snakes.append(snake_geometry)
+    def draw_grid(self):
+        """Рисует линии сетки для измерений оси."""
+        for x in range(0, MAP_SIZE[0] + 1, 10):
+            for y in range(0, MAP_SIZE[1] + 1, 10):
+                box(canvas=self.scene, pos=vector(x, y, 0), size=vector(0.2, 0.2, MAP_SIZE[2]), color=color.gray(0.5))
 
-    def update_food(self, food_data):
-        print(food_data)
-        """Обновление еды."""
-        for food in self.food:
-            food.visible = False
+        for y in range(0, MAP_SIZE[1] + 1, 10):
+            for z in range(0, MAP_SIZE[2] + 1, 10):
+                box(canvas=self.scene, pos=vector(0, y, z), size=vector(0.2, 0.2, MAP_SIZE[2]), color=color.gray(0.5))
 
-        self.food = []
-        for food_item in food_data:
-            food_color = self._get_food_color(food_item['points'])
-            self.food.append(
-                sphere(pos=vector(*food_item['c']), radius=0.3, color=food_color)
-            )
+        for z in range(0, MAP_SIZE[2] + 1, 10):
+            for x in range(0, MAP_SIZE[0] + 1, 10):
+                box(canvas=self.scene, pos=vector(x, 0, z), size=vector(0.2, MAP_SIZE[1], 0.2), color=color.gray(0.5))
 
-    def update_fences(self, fence_data):
-        print(fence_data)
-        """Обновление препятствий."""
-        for fence in self.fences:
-            fence.visible = False
+    def draw_food(food_data, canvas_scene):
+        """Рисует еду на карте (от желтого до красного в зависимости от `points`)."""
+        food_boxes = []
+        for food in food_data:
+            # Определяем цвет еды в зависимости от количества очков
+            points = food["points"]
+            food_color = vector(1, 1 - min(points, 10) / 10, 0)  # Градиент от желтого (1, 1, 0) к красному (1, 0, 0)
+            food_boxes.append(box(pos=vector(*food["c"]), size=vector(2, 2, 2), color=food_color, canvas=canvas_scene))
+        return food_boxes
 
-        self.fences = []
-        for fence_item in fence_data:
-            self.fences.append(
-                box(pos=vector(*fence_item), size=vector(1, 1, 1), color=color.green)
-            )
 
-    def _get_food_color(self, points):
-        """Получить цвет еды в зависимости от её стоимости."""
-        if points <= 0:
-            return color.white
-        elif points < 5:
-            return color.yellow
-        elif points < 10:
-            return color.orange
-        else:
-            return color.red
-
-    def run(self):
-        """Основной цикл игры."""
-        while True:
-            rate(10)
-            # Здесь можно обновлять состояния змей, еды и препятствий, вызывая соответствующие методы.
