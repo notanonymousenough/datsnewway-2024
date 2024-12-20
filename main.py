@@ -1,8 +1,7 @@
 import requests
-import json
 
 # Ваш токен
-token = 'xxx'
+token = 'token'
 
 # URL сервера
 server_url = 'https://games-test.datsteam.dev/play/snake3d'
