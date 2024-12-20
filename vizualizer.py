@@ -58,36 +58,25 @@ class SnakeMap:
         self.scene.center = self.body[0].pos
 
     def draw_grid(self):
-        """Рисует ровную трёхмерную сетку с использованием цилиндров."""
+        """Рисует сетку по всей карте, используя цилиндры для линий."""
         grid_color = color.gray(0.5)  # Цвет сетки (серый)
 
-        # Рисуем сетку по оси X и Y на плоскости Z = 0
+        # Линии вдоль оси X
         for x in range(0, MAP_SIZE[0] + 1, 10):
             for y in range(0, MAP_SIZE[1] + 1, 10):
-                # Линии вдоль X на фиксированном Y
-                cylinder(canvas=self.scene, pos=vector(0, y, 0), axis=vector(MAP_SIZE[0], 0, 0), radius=0.05,
+                cylinder(canvas=self.scene, pos=vector(x, y, 0), axis=vector(0, 0, MAP_SIZE[2]), radius=0.05,
                          color=grid_color)
 
-                # Линии вдоль Y на фиксированном X
-                cylinder(canvas=self.scene, pos=vector(x, 0, 0), axis=vector(0, MAP_SIZE[1], 0), radius=0.05,
-                         color=grid_color)
-
-        # Рисуем сетку по оси Y и Z на плоскости X = 0
+        # Линии вдоль оси Y
         for y in range(0, MAP_SIZE[1] + 1, 10):
             for z in range(0, MAP_SIZE[2] + 1, 10):
-                # Линии вдоль Y на фиксированном Z
-                cylinder(canvas=self.scene, pos=vector(0, y, 0), axis=vector(0, 0, MAP_SIZE[2]), radius=0.05,
+                cylinder(canvas=self.scene, pos=vector(0, y, z), axis=vector(MAP_SIZE[0], 0, 0), radius=0.05,
                          color=grid_color)
 
-                # Линии вдоль Z на фиксированном Y
-                cylinder(canvas=self.scene, pos=vector(0, y, z), axis=vector(0, MAP_SIZE[1], 0), radius=0.05,
-                         color=grid_color)
-
-        # Рисуем сетку по оси X и Z на плоскости Y = 0
+        # Линии вдоль оси Z
         for z in range(0, MAP_SIZE[2] + 1, 10):
             for x in range(0, MAP_SIZE[0] + 1, 10):
-                # Линии вдоль X на фиксированном Z
-                cylinder(canvas=self.scene, pos=vector(x, 0, z), axis=vector(MAP_SIZE[0], 0, 0), radius=0.05,
+                cylinder(canvas=self.scene, pos=vector(x, 0, z), axis=vector(0, MAP_SIZE[1], 0), radius=0.05,
                          color=grid_color)
 
                 # Линии вдоль Z на фиксированном X
