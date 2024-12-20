@@ -1,5 +1,5 @@
 import requests
-from vpython import canvas, vector, box, color, label, rate
+from vpython import canvas, vector, box, color, label, rate, cylinder
 
 # Установить размеры карты
 MAP_SIZE = [180, 180, 180]
@@ -58,18 +58,41 @@ class SnakeMap:
         self.scene.center = self.body[0].pos
 
     def draw_grid(self):
-        """Рисует линии сетки для измерений оси."""
+        """Рисует ровную трёхмерную сетку с использованием цилиндров."""
+        grid_color = color.gray(0.5)  # Цвет сетки (серый)
+
+        # Рисуем сетку по оси X и Y на плоскости Z = 0
         for x in range(0, MAP_SIZE[0] + 1, 10):
             for y in range(0, MAP_SIZE[1] + 1, 10):
-                box(canvas=self.scene, pos=vector(x, y, 0), size=vector(0.2, 0.2, MAP_SIZE[2]), color=color.gray(0.5))
+                # Линии вдоль X на фиксированном Y
+                cylinder(canvas=self.scene, pos=vector(0, y, 0), axis=vector(MAP_SIZE[0], 0, 0), radius=0.05,
+                         color=grid_color)
 
+                # Линии вдоль Y на фиксированном X
+                cylinder(canvas=self.scene, pos=vector(x, 0, 0), axis=vector(0, MAP_SIZE[1], 0), radius=0.05,
+                         color=grid_color)
+
+        # Рисуем сетку по оси Y и Z на плоскости X = 0
         for y in range(0, MAP_SIZE[1] + 1, 10):
             for z in range(0, MAP_SIZE[2] + 1, 10):
-                box(canvas=self.scene, pos=vector(0, y, z), size=vector(0.2, 0.2, MAP_SIZE[2]), color=color.gray(0.5))
+                # Линии вдоль Y на фиксированном Z
+                cylinder(canvas=self.scene, pos=vector(0, y, 0), axis=vector(0, 0, MAP_SIZE[2]), radius=0.05,
+                         color=grid_color)
 
+                # Линии вдоль Z на фиксированном Y
+                cylinder(canvas=self.scene, pos=vector(0, y, z), axis=vector(0, MAP_SIZE[1], 0), radius=0.05,
+                         color=grid_color)
+
+        # Рисуем сетку по оси X и Z на плоскости Y = 0
         for z in range(0, MAP_SIZE[2] + 1, 10):
             for x in range(0, MAP_SIZE[0] + 1, 10):
-                box(canvas=self.scene, pos=vector(x, 0, z), size=vector(0.2, MAP_SIZE[1], 0.2), color=color.gray(0.5))
+                # Линии вдоль X на фиксированном Z
+                cylinder(canvas=self.scene, pos=vector(x, 0, z), axis=vector(MAP_SIZE[0], 0, 0), radius=0.05,
+                         color=grid_color)
+
+                # Линии вдоль Z на фиксированном X
+                cylinder(canvas=self.scene, pos=vector(x, 0, 0), axis=vector(0, 0, MAP_SIZE[2]), radius=0.05,
+                         color=grid_color)
 
     def draw_food(food_data, canvas_scene):
         """Рисует еду на карте (от желтого до красного в зависимости от `points`)."""
