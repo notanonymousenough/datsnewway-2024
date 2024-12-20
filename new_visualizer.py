@@ -1,92 +1,94 @@
-from vpython import canvas, vector, box, sphere, color, rate
+from vpython import canvas, vector, box, color, rate
 
 
 class SnakeGame3D:
-    def __init__(self, game_state):
+    canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
+
+    def __init__(self, game_state, fps=10):
         """
-        Инициализация визуализации игры с добавлением скайбокса на всех канвасах.
+        Инициализация визуализации игры с добавлением канвасов.
+        :param game_state: Начальное состояние игры.
+        :param fps: Количество обновлений в секунду для ограничения частоты.
         """
         self.game_state = game_state
+        self.fps = fps  # Число кадров в секунду
 
-        # Создаем три отдельных канваса, по одному для каждой змеи
-        self.canvases = []
-        for i in range(3):
-            self.canvases.append(canvas(
-                title=f"Snake-{i + 1}",
-                width=500,
-                height=500,
-                center=vector(90, 30, 90),  # Центр карты
-                background=color.white  # Исходный фон для скайбокса
-            ))
+        # Проверяем, созданы ли уже канвасы
+        if not SnakeGame3D.canvas_instances:
+            for i in range(3):
+                SnakeGame3D.canvas_instances.append(canvas(
+                    title=f"Snake-{i + 1}",
+                    width=500,
+                    height=500,
+                    center=vector(90, 30, 90),  # Центр карты
+                    background=color.white  # Исходный фон
+                ))
 
         # Уникальный список всех объектов для проверки пересечений
-        self.existing_positions = set()
+        self.objects = [{} for _ in range(3)]  # Отслеживаем объекты для каждого канваса
 
         # Запускаем визуализацию сразу для всех канвасов
         self.visualize_all()
 
-    def check_overlap(self, position):
-        """Проверяет, пересекается ли объект с уже добавленным (только для статических объектов)."""
-        return tuple(position) in self.existing_positions
+    def clear_canvas(self, canvas_id):
+        """Удалить объекты из канваса, которые больше не обновляются."""
+        for obj in list(self.objects[canvas_id].values()):
+            obj.visible = False  # Скройте объект, чтобы освободить память
+        self.objects[canvas_id] = {}
 
-    def add_position(self, position):
-        """Добавляет позицию в список существующих объектов."""
-        self.existing_positions.add(tuple(position))
+    def draw_object(self, canvas_instance, position, size, color_value, canvas_id, key):
+        """
+        Добавляет или обновляет объект на канвасе.
+        :param canvas_instance: Канвас для отрисовки объекта.
+        :param position: Позиция объекта в пространстве.
+        :param size: Размер объекта.
+        :param color_value: Цвет объекта.
+        :param canvas_id: ID канваса.
+        :param key: Уникальный ключ объекта (например, его позиция).
+        """
+        pos_tuple = tuple(position)
+        if key in self.objects[canvas_id]:  # Если объект существует, обновляем его
+            obj = self.objects[canvas_id][key]
+            obj.pos = vector(*pos_tuple)
+        else:  # Иначе создаем новый объект
+            self.objects[canvas_id][key] = box(pos=vector(*pos_tuple), size=size, color=color_value,
+                                               canvas=canvas_instance)
 
-    def draw_fences(self, canvas_instance):
-        """Отображение зеленых препятствий на заданном канвасе."""
+    def draw_fences(self, canvas_instance, canvas_id):
         for fence in self.game_state["fences"]:
-            if not self.check_overlap(fence):  # Проверяем пересечение
-                box(pos=vector(*fence), size=vector(1, 1, 1), color=color.green, canvas=canvas_instance)
-                self.add_position(fence)
+            self.draw_object(canvas_instance, position=fence, size=vector(1, 1, 1), color_value=color.green,
+                             canvas_id=canvas_id, key=tuple(fence))
 
-    def draw_food(self, canvas_instance):
-        """Отображение еды на заданном канвасе."""
+    def draw_food(self, canvas_instance, canvas_id):
         for food in self.game_state["food"]:
             food_color = self.parse_color_by_points(food["points"])
-            if not self.check_overlap(food["c"]):  # Проверяем пересечение
-                box(pos=vector(*food["c"]), size=vector(1, 1, 1), color=food_color, canvas=canvas_instance)
-                self.add_position(food["c"])
-
+            self.draw_object(canvas_instance, position=food["c"], size=vector(1, 1, 1), color_value=food_color,
+                             canvas_id=canvas_id, key=tuple(food["c"]))
         for special_type, special_list in self.game_state["specialFood"].items():
             special_color = color.yellow if special_type == "golden" else color.magenta
             for position in special_list:
-                if not self.check_overlap(position):  # Проверяем пересечение
-                    box(pos=vector(*position), size=vector(1, 1, 1), color=special_color, canvas=canvas_instance)
-                    self.add_position(position)
+                self.draw_object(canvas_instance, position=position, size=vector(1, 1, 1), color_value=special_color,
+                                 canvas_id=canvas_id, key=tuple(position))
 
-    def draw_snake(self, canvas_instance, snake):
-        """Отображение змеи на заданном канвасе."""
+    def draw_snake(self, canvas_instance, canvas_id, snake):
         geometry = snake["geometry"]
-
-        # Привязываем камеру к голове змеи, если сегменты есть
         if geometry:
             head_position = geometry[0]
-            canvas_instance.center = vector(*head_position)  # Устанавливаем центр канваса на голову змеи
-
-        # Отрисовываем сегменты змеи
+            canvas_instance.center = vector(*head_position)  # Центрируем камеру на голове змеи
         for i, segment in enumerate(geometry):
-            seg_color = color.blue if i > 0 else color.cyan  # Голова голубая, тело синее
-            box(pos=vector(*segment), size=vector(1, 1, 1), color=seg_color, canvas=canvas_instance)
+            seg_color = color.blue if i > 0 else color.cyan
+            self.draw_object(canvas_instance, position=segment, size=vector(1, 1, 1), color_value=seg_color,
+                             canvas_id=canvas_id, key=tuple(segment))
 
-    def draw_enemies(self, canvas_instance):
-        """Отображение врагов с синим телом и голубой головой на заданном канвасе."""
+    def draw_enemies(self, canvas_instance, canvas_id):
         for enemy in self.game_state["enemies"]:
             geometry = enemy["geometry"]
             for i, segment in enumerate(geometry):
-                # Голова — голубая, тело — синее
                 seg_color = color.cyan if i == 0 else color.blue
-                if not self.check_overlap(segment):  # Проверяем пересечение
-                    box(
-                        pos=vector(*segment),
-                        size=vector(1, 1, 1),
-                        color=seg_color,
-                        canvas=canvas_instance
-                    )
-                    self.add_position(segment)
+                self.draw_object(canvas_instance, position=segment, size=vector(1, 1, 1),
+                                 color_value=seg_color, canvas_id=canvas_id, key=tuple(segment))
 
     def parse_color_by_points(self, points):
-        """Возвращает RGB-значение цвета еды в зависимости от ее стоимости."""
         if points <= 0:
             return color.white
         elif points < 50:
@@ -94,27 +96,16 @@ class SnakeGame3D:
         else:
             return vector(1, 0, 0)  # Красный
 
-    def visualize(self, canvas_instance, snake):
-        """
-        Визуализация объектов на заданном канвасе для одной змеи.
-        :param canvas_instance: Канвас для отрисовки объектов.
-        :param snake: Данные змеи (словарь).
-        """
-        # Очищаем все объекты на текущем канвасе
-        canvas_instance.objects.clear()
-
-        # Обновляем список текущих позиций
-        self.existing_positions.clear()
-
-        # Рисуем игровые элементы
-        self.draw_fences(canvas_instance)
-        self.draw_food(canvas_instance)
-        self.draw_snake(canvas_instance, snake)
-        self.draw_enemies(canvas_instance)
+    def visualize(self, canvas_instance, canvas_id, snake):
+        self.clear_canvas(canvas_id)  # Удаляем старые объекты, если они больше не нужны
+        self.draw_fences(canvas_instance, canvas_id)
+        self.draw_food(canvas_instance, canvas_id)
+        self.draw_snake(canvas_instance, canvas_id, snake)
+        self.draw_enemies(canvas_instance, canvas_id)
 
     def visualize_all(self):
-        """
-        Визуализирует все змеи на отдельных канвасах.
-        """
-        for i, snake in enumerate(self.game_state["snakes"]):
-            self.visualize(self.canvases[i], snake)
+        while True:
+            rate(self.fps)  # Ограничение количества обновлений в секунду
+            for i, snake in enumerate(self.game_state["snakes"]):
+                self.visualize(SnakeGame3D.canvas_instances[i], i, snake)
+

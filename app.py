@@ -29,8 +29,7 @@ class App:
             self.snake_game.game_state = game_state
 
             # Обновляем объекты на канвасах
-            for i, snake in enumerate(game_state["snakes"]):
-                self.snake_game.visualize(self.snake_game.canvases[i], snake)
+            self.snake_game.visualize_all()
 
             # Асинхронная задержка для плавного обновления
             await asyncio.sleep(1)
