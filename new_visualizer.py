@@ -1,10 +1,10 @@
-from vpython import canvas, vector, box, color
+from vpython import canvas, vector, box, sphere, color, rate
 
 
 class SnakeGame3D:
     def __init__(self, game_state):
         """
-        Инициализация визуализации игры на трех независимых канвасах с привязкой к каждой змее.
+        Инициализация визуализации игры с добавлением скайбокса на всех канвасах.
         """
         self.game_state = game_state
 
@@ -16,7 +16,7 @@ class SnakeGame3D:
                 width=500,
                 height=500,
                 center=vector(90, 30, 90),  # Центр карты
-                background=color.black
+                background=color.white  # Исходный фон для скайбокса
             ))
 
         # Уникальный список всех объектов для проверки пересечений
