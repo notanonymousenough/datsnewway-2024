@@ -1,5 +1,7 @@
 import asyncio
 import threading
+import time
+
 from new_visualizer import SnakeGame3D
 from vpython import rate
 
@@ -22,19 +24,25 @@ class App:
 
         while True:
             print(game_state["snakes"])
+            # Получаем текущее время
+            current_time = int(time.time())
             # Извлекаем змей для нового хода
             snakes = self.process_snakes(game_state)
             print("proceed new snakes:", snakes)
 
             # Получаем новое состояние
-            game_state = await self.api.move(self.make_request(snakes))
+            req = self.make_request(snakes)
+
+            # Асинхронная задержка
+
+            # Если прошла новая секунда, выполняем обработку
+            while current_time == int(time.time()):
+                pass
+            game_state = await self.api.move(req)
             self.snake_game.game_state = game_state
 
             # Обновляем объекты на канвасах
             self.snake_game.visualize_all()
-
-            # Асинхронная задержка для плавного обновления
-            await asyncio.sleep(0.9)
 
     def process_snakes(self, res):
         snakes = []
@@ -53,7 +61,7 @@ class App:
                 maxFoodPrice = food["points"]
             cubes.append(food["c"] + [food["points"]])
         for golden in res["specialFood"]["golden"]:
-            cubes.append(golden + [maxFoodPrice*100])
+            cubes.append(golden + [maxFoodPrice*10])
         for suspicious in res["specialFood"]["suspicious"]:
             cubes.append(suspicious + [-50])
         print(f"got {str(len(cubes))} cubes")
