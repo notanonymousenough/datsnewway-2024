@@ -54,8 +54,18 @@ class App:
             for cube in enemy["geometry"]:
                 cubes.append(cube + [-100])
         for snake in res["snakes"]:
+            if len(snake.get("geometry", [])) == 0:
+                continue
             for cube in snake["geometry"]:
                 cubes.append(cube + [-100])
+            # голова может сдвинуться в любую сторону, учитываем
+            head = snake["geometry"][0]
+            cubes.append([head[0]-1, head[1], head[2], -75])
+            cubes.append([head[0]+1, head[1], head[2], -75])
+            cubes.append([head[0], head[1]-1, head[2], -75])
+            cubes.append([head[0], head[1]+1, head[2], -75])
+            cubes.append([head[0], head[1], head[2]-1, -75])
+            cubes.append([head[0], head[1], head[2]+1, -75])
         for food in res["food"]:
             if food["points"] > maxFoodPrice:
                 maxFoodPrice = food["points"]
