@@ -104,8 +104,5 @@ class SnakeGame3D:
         self.draw_enemies(canvas_instance, canvas_id)
 
     def visualize_all(self):
-        while True:
-            rate(self.fps)  # Ограничение количества обновлений в секунду
-            for i, snake in enumerate(self.game_state["snakes"]):
-                self.visualize(SnakeGame3D.canvas_instances[i], i, snake)
-
+        for i, snake in enumerate(self.game_state["snakes"]):
+            self.visualize(SnakeGame3D.canvas_instances[i], i, snake)
