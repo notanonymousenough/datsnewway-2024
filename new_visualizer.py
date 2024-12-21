@@ -2,9 +2,8 @@ from vpython import canvas, vector, box, color, rate
 
 
 class SnakeGame3D:
-    canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
 
-    def __init__(self, game_state, fps=10):
+    def __init__(self, game_state, fps=10, snakes_count=5):
         """
         Инициализация визуализации игры с добавлением канвасов.
         :param game_state: Начальное состояние игры.
@@ -12,11 +11,12 @@ class SnakeGame3D:
         """
         self.game_state = game_state
         self.fps = fps  # Число кадров в секунду
+        self.canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
 
         # Проверяем, созданы ли уже канвасы
-        if not SnakeGame3D.canvas_instances:
-            for i in range(3):
-                SnakeGame3D.canvas_instances.append(canvas(
+        if len(self.canvas_instances) == 0:
+            for i in range(snakes_count):
+                self.canvas_instances.append(canvas(
                     title=f"Snake-{i + 1}",
                     width=500,
                     height=500,
@@ -25,7 +25,7 @@ class SnakeGame3D:
                 ))
 
         # Уникальный список всех объектов для проверки пересечений
-        self.objects = [{} for _ in range(3)]  # Отслеживаем объекты для каждого канваса
+        self.objects = [{} for _ in range(snakes_count)]  # Отслеживаем объекты для каждого канваса
 
         # Запускаем визуализацию сразу для всех канвасов
         self.visualize_all()
@@ -105,4 +105,4 @@ class SnakeGame3D:
 
     def visualize_all(self):
         for i, snake in enumerate(self.game_state["snakes"]):
-            self.visualize(SnakeGame3D.canvas_instances[i], i, snake)
+            self.visualize(self.canvas_instances[i], i, snake)
