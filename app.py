@@ -6,7 +6,7 @@ from new_visualizer import SnakeGame3D
 from vpython import rate
 
 from api import Api
-from cubes import find_next_direction_safe
+from cubes import find_next_direction_to_center
 
 
 class App:
@@ -90,9 +90,10 @@ class App:
         print(f"got {str(len(cubes))} cubes")
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
+                direction, path = find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"])
                 snakes.append({
                     "id": snake["id"],
-                    "direction": find_next_direction_safe(cubes, snake["geometry"][0], res["mapSize"])
+                    "direction": direction
                 })
                 print(f"proceed snake {snake["id"]}")
         return snakes
