@@ -13,6 +13,7 @@ class App:
     def __init__(self, token: str, debug: bool, mock: bool):
         self.debug = debug
         self.api = Api(token, debug, mock)
+        self.running = True
 
     async def run(self):
         """
@@ -29,6 +30,13 @@ class App:
         self.new_tick_time = game_state["tickRemainMs"] + current_time
         self.snake_game = SnakeGame3D(game_state)  # Инициализация визуализации
 
+        # Создаем новый event loop для asyncio
+        self.loop = asyncio.new_event_loop()
+
+        # Запускаем asyncio loop в отдельном потоке
+        self.thread = threading.Thread(target=self.start_async_loop_in_thread)
+        self.thread.start()
+
         while True:
             print(game_state["snakes"])
             current_ns = time.time_ns()
@@ -37,10 +45,6 @@ class App:
             print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
             print("paths:", paths)
             self.snake_game.paths = paths
-            # Обновляем объекты на канвасах
-            current_ns = time.time_ns()
-            self.snake_game.visualize_all()
-            print(f"vizualized [{str(time.time_ns()-current_ns)}ns]")
             # Получаем новое состояние
             req = self.make_request(snakes)
 
@@ -56,6 +60,15 @@ class App:
             current_time = time.time() * 1000
             self.new_tick_time = game_state["tickRemainMs"] + current_time
             self.snake_game.game_state = game_state
+
+    def start_async_loop_in_thread(self):
+        """Функция для запуска asyncio event loop в отдельном потоке."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_until_complete(self.game_loop())
+
+    async def game_loop(self):
+        while self.running:
+            await self.snake_game.visualize_all_async()
 
     def process_snakes(self, res):
         snakes = []
@@ -115,6 +128,9 @@ class App:
 
     async def close(self):
         await self.api.close()
+        self.running = False
+        self.loop.stop()
+        self.thread.join()
 
     def is_new_tick(self):
         return time.time() * 1000 > self.new_tick_time

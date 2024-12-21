@@ -1,4 +1,5 @@
 from vpython import canvas, vector, box, color, rate
+import asyncio
 
 
 class SnakeGame3D:
@@ -18,7 +19,7 @@ class SnakeGame3D:
         if len(self.canvas_instances) == 0:
             for i in range(snakes_count):
                 self.canvas_instances.append(canvas(
-                    title=f"Snake-{i + 1}",
+                    title=f"Snake-{i + 1} [unknown]",
                     width=500,
                     height=500,
                     center=vector(90, 30, 90),  # Центр карты
@@ -72,6 +73,9 @@ class SnakeGame3D:
                                  canvas_id=canvas_id, key=tuple(position))
 
     def draw_snake(self, canvas_instance, canvas_id, snake):
+        canvas_instance.title = f"Snake-{canvas_id+1} [{snake["status"]}]"
+        if snake["status"] != "alive":
+            canvas_instance.title += f"{str(snake["reviveRemainMs"]/1000)}s"
         geometry = snake["geometry"]
         if geometry:
             head_position = geometry[0]
@@ -120,3 +124,18 @@ class SnakeGame3D:
     def visualize_all(self):
         for i, snake in enumerate(self.game_state["snakes"]):
             self.visualize(self.canvas_instances[i], i, snake)
+
+    async def visualize_all_async(self):
+        rate(self.fps)
+        tasks = [self.visualize_async(self.canvas_instances[i], i, snake)
+                 for i, snake in enumerate(self.game_state["snakes"])]
+        await asyncio.gather(*tasks)
+
+    async def visualize_async(self, canvas_instance, canvas_id, snake):
+        self.clear_canvas(canvas_id)  # Очищаем старые объекты
+        self.draw_fences(canvas_instance, canvas_id)
+        self.draw_food(canvas_instance, canvas_id)
+        self.draw_snake(canvas_instance, canvas_id, snake)
+        self.draw_enemies(canvas_instance, canvas_id)
+        self.draw_paths(canvas_instance, canvas_id, snake["id"])
+        await asyncio.sleep(1 / self.fps)  # Контроль FPS
