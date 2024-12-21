@@ -4,15 +4,22 @@ from math import sqrt
 
 def find_next_direction_to_center(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=10000):
     """
-    Функция с добавлением приоритета для движения к центру карты.
+    Ищет следующий шаг для движения к положительному кубу или к центру карты,
+    а также возвращает полный путь до выбранной цели.
+
+    :param cubes: Список кубов, каждый элемент - [x, y, z, price]
+    :param current_position: Текущая позиция [x, y, z]
+    :param map_size: Размер карты [max_x, max_y, max_z]
+    :param search_radius: Начальный радиус поиска
+    :param max_radius: Максимальный радиус поиска
+    :param max_iterations: Максимальное количество итераций для предотвращения зависания
+    :return: Следующий шаг [dx, dy, dz] и полный путь до цели
     """
     directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
-
-    # Центр карты
-    center_position = [map_size[i] / 2 for i in range(3)]
+    center_position = [map_size[i] / 2 for i in range(3)]  # Центр карты
 
     def is_within_bounds(position):
-        """Проверка, что позиция внутри границ карты."""
+        """Проверяет, находится ли позиция в пределах карты."""
         return all(0 <= position[i] <= map_size[i] for i in range(3))
 
     def find_positive_target(radius):
@@ -32,20 +39,19 @@ def find_next_direction_to_center(cubes, current_position, map_size, search_radi
         return sum(abs(a[i] - b[i]) for i in range(3))
 
     def find_safe_direction():
-        """Находит безопасное направление движения."""
+        """Находит безопасное направление для движения."""
         for direction in directions:
             next_position = [current_position[i] + direction[i] for i in range(3)]
             if tuple(next_position) not in negative_cubes and is_within_bounds(next_position):
-                return direction
-        return (1, 0, 0)  # Если всё занято, идём вперёд по умолчанию.
+                return direction, [current_position, next_position]
+        return (1, 0, 0), [current_position, [current_position[0] + 1, current_position[1], current_position[2]]]  # По умолчанию "идём вперёд"
 
     # Разделяем кубы на положительные и отрицательные
     negative_cubes = set(tuple(cube[:3]) for cube in cubes if cube[3] <= 0)
-
-    # Ищем цель в пределах заданного радиуса
     target = find_positive_target(search_radius)
+
     while not target and search_radius <= max_radius:
-        search_radius *= 2  # Увеличиваем радиус, если цели нет
+        search_radius *= 2
         target = find_positive_target(search_radius)
 
     if not target:
@@ -59,25 +65,27 @@ def find_next_direction_to_center(cubes, current_position, map_size, search_radi
     # A* поиск пути
     visited = set()
     pq = []
-    heapq.heappush(pq, (0, current_position, None))  # (приоритет, позиция, первый шаг)
+    heapq.heappush(pq, (0, current_position, [], None))  # (приоритет, позиция, путь, первый шаг)
     iteration_count = 0
 
     while pq:
         iteration_count += 1
         if iteration_count > max_iterations:
-            # Если достигли предела по итерациям, возвращаем безопасное направление
             print(f"[LOG] Превышено максимальное количество итераций. Режим: {heuristic_mode}")
             return find_safe_direction()
 
-        cost, position, first_step = heapq.heappop(pq)
+        cost, position, path, first_step = heapq.heappop(pq)
 
         if tuple(position) in visited:
             continue
         visited.add(tuple(position))
 
+        # Добавляем текущую позицию в путь
+        path = path + [position]
+
         # Если достигли цели
         if position == list(target_position):
-            return first_step
+            return (first_step, path)
 
         # Обрабатываем каждое направление
         for direction in directions:
@@ -91,13 +99,13 @@ def find_next_direction_to_center(cubes, current_position, map_size, search_radi
             ):
                 continue
 
-            # Вычисляем эвристику с учётом расстояния до цели и до центра
+            # Вычисляем эвристику
             heuristic_to_target = manhattan_distance(next_position, target_position)
             heuristic_to_center = manhattan_distance(next_position, center_position)
             heuristic = heuristic_to_target + 0.5 * heuristic_to_center
 
             heapq.heappush(
-                pq, (cost + 1 + heuristic, next_position, first_step or direction)
+                pq, (cost + 1 + heuristic, next_position, path, first_step or direction)
             )
 
     # Если не нашли путь, возвращаем безопасное направление
