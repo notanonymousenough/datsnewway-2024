@@ -6,7 +6,7 @@ from new_visualizer import SnakeGame3D
 from vpython import rate
 
 from api import Api
-from cubes import find_next_direction_to_center
+from cubes import Cubes
 
 
 class App:
@@ -26,23 +26,26 @@ class App:
             await asyncio.sleep(0.5)
             print("retrying...")
             game_state = await self.api.move(self.make_request())
-        new_tick_time = game_state["tickRemainMs"] + current_time
+        self.new_tick_time = game_state["tickRemainMs"] + current_time
         self.snake_game = SnakeGame3D(game_state)  # Инициализация визуализации
-        previous_paths = None
 
         while True:
             print(game_state["snakes"])
             current_ns = time.time_ns()
             # Извлекаем змей для нового хода
-            snakes, previous_paths = self.process_snakes(game_state, previous_paths)
+            snakes, paths = self.process_snakes(game_state)
             print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
-            print("paths:", previous_paths)
-            self.snake_game.paths = previous_paths
+            print("paths:", paths)
+            self.snake_game.paths = paths
+            # Обновляем объекты на канвасах
+            current_ns = time.time_ns()
+            self.snake_game.visualize_all()
+            print(f"vizualized [{str(time.time_ns()-current_ns)}ns]")
             # Получаем новое состояние
             req = self.make_request(snakes)
 
             # Если прошла новая секунда, выполняем обработку
-            while time.time()*1000 < new_tick_time:
+            while not self.is_new_tick():
                 pass
             game_state = await self.api.move(req)
             while game_state is None:
@@ -51,12 +54,10 @@ class App:
                 game_state = await self.api.move(req)
             # Получаем текущее время
             current_time = time.time() * 1000
-            new_tick_time = game_state["tickRemainMs"] + current_time
-            # Обновляем объекты на канвасах
-            self.snake_game.visualize_all()
+            self.new_tick_time = game_state["tickRemainMs"] + current_time
             self.snake_game.game_state = game_state
 
-    def process_snakes(self, res, previous_paths=None):
+    def process_snakes(self, res):
         snakes = []
         cubes = []
         maxFoodPrice = 0
@@ -89,14 +90,16 @@ class App:
         for suspicious in res["specialFood"]["suspicious"]:
             cubes.append(suspicious + [-50])
         print(f"got {str(len(cubes))} cubes")
+        negative_cubes = set(tuple(cube[:3]) for cube in cubes if cube[3] <= 0)
         paths = {}
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
                 id = snake["id"]
-                path = None
-                if previous_paths is not None:
-                    path = previous_paths.get(id, [])
-                direction, path = find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"], previous_path=path)
+                if self.is_new_tick():
+                    print("new tick! running find_safe_direction")
+                    direction, path = Cubes.find_safe_direction(snake["geometry"][0], negative_cubes, res["mapSize"])
+                else:
+                    direction, path = Cubes.find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"])
                 snakes.append({
                     "id": snake["id"],
                     "direction": direction
@@ -112,3 +115,6 @@ class App:
 
     async def close(self):
         await self.api.close()
+
+    def is_new_tick(self):
+        return time.time() * 1000 > self.new_tick_time
