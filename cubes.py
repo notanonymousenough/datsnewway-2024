@@ -2,70 +2,69 @@ import heapq
 from math import sqrt
 
 
-def find_next_direction_safe(cubes, current_position, search_radius=15, max_radius=100):
+def find_next_direction_safe(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=10000):
     """
-    Функция для определения безопасного направления движения,
-    с учётом необходимости избегания стенок (отрицательных кубов)
-    и расширения радиуса в случае отсутствия целей.
+    Функция с оптимизированным поиском пути через A*, ограничением итераций и эвристикой манхэттена.
+    """
 
-    :param cubes: Список кубов, каждый элемент - [x, y, z, price]
-    :param current_position: Текущая позиция нашего куба [x, y, z]
-    :param search_radius: Начальный радиус поиска
-    :param max_radius: Максимально допустимый радиус (чтобы избежать бесконечных расширений)
-    :return: Вектор направления движения [dx, dy, dz]
-    """
     directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
 
+    def is_within_bounds(position):
+        """Проверка, что позиция внутри границ карты."""
+        return all(0 <= position[i] <= map_size[i] for i in range(3))
+
     def find_positive_target(radius):
-        """
-        Ищет ближайший положительный куб в пределах указанного радиуса.
-        Возвращает цель и её позицию.
-        """
+        """Ищет ближайший положительный куб в пределах заданного радиуса."""
         positive_cubes = [
             (cube[:3], cube[3])
             for cube in cubes
-            if cube[3] > 0 and distance(current_position, cube[:3]) <= radius
+            if cube[3] > 0
+            and distance(current_position, cube[:3]) <= radius
+            and is_within_bounds(cube[:3])
         ]
-
-        # Сортируем положительные кубы по убыванию цены и минимальному расстоянию
         positive_cubes.sort(key=lambda x: (-x[1], distance(current_position, x[0])))
-
         return positive_cubes[0] if positive_cubes else None
 
+    def manhattan_distance(a, b):
+        """Рассчитывает более простую манхэттенскую эвристику."""
+        return sum(abs(a[i] - b[i]) for i in range(3))
+
     def find_safe_direction():
-        """
-        Находит любое безопасное направление для движения.
-        """
-        safe_directions = []
+        """Находит безопасное направление движения."""
         for direction in directions:
             next_position = [current_position[i] + direction[i] for i in range(3)]
-            if tuple(next_position) not in negative_cubes:
-                safe_directions.append(direction)
-
-        # Если нет негативной позиции, выбираем любое безопасное направление
-        return safe_directions[0] if safe_directions else (1, 0, 0)  # По умолчанию "идём вперёд"
+            if tuple(next_position) not in negative_cubes and is_within_bounds(next_position):
+                return direction
+        return (1, 0, 0)  # Если всё занято, идём вперёд по умолчанию.
 
     # Разделяем кубы на положительные и отрицательные
     negative_cubes = set(tuple(cube[:3]) for cube in cubes if cube[3] <= 0)
-    target = find_positive_target(search_radius)
 
-    # Если целей нет в пределах текущего радиуса
+    # Ищем цель в пределах заданного радиуса
+    target = find_positive_target(search_radius)
     while not target and search_radius <= max_radius:
-        search_radius *= 2  # Увеличиваем радиус вдвое
+        search_radius *= 2  # Увеличиваем радиус, если цели нет
         target = find_positive_target(search_radius)
 
     if not target:
-        # Спасаемся, если нет целей даже после расширения радиуса
+        # Если цель не найдена, возвращаем безопасное направление
         return find_safe_direction()
 
     target_position, _ = target
 
-    # A* для поиска пути к цели
+    # A* поиск пути
     visited = set()
     pq = []
-    heapq.heappush(pq, (0, current_position, None))  # Начальная позиция с нулевой стоимостью
+    heapq.heappush(pq, (0, current_position, None))  # (приоритет, позиция, первый шаг)
+    iteration_count = 0
 
     while pq:
+        iteration_count += 1
+        if iteration_count > max_iterations:
+            # Если достигли предела по итерациям, возвращаем безопасное направление
+            print("[LOG] Превышено максимальное количество итераций в A*. Возвращаем безопасное направление.")
+            return find_safe_direction()
+
         cost, position, first_step = heapq.heappop(pq)
 
         if tuple(position) in visited:
@@ -74,22 +73,27 @@ def find_next_direction_safe(cubes, current_position, search_radius=15, max_radi
 
         # Если достигли цели
         if position == list(target_position):
-            return first_step  # Возвращаем первый шаг для достижения цели
+            return first_step
 
-        # Рассматриваем все возможные направления
+        # Обрабатываем каждое направление
         for direction in directions:
             next_position = [position[i] + direction[i] for i in range(3)]
-            if tuple(next_position) in visited or tuple(next_position) in negative_cubes:
-                continue  # Пропускаем уже посещённые или запрещённые позиции
 
-            # Вычисляем эвристику: расстояние до цели
-            heuristic = distance(next_position, target_position)
+            # Проверяем границы, статус препятствия и посещение
+            if (
+                tuple(next_position) in visited
+                or tuple(next_position) in negative_cubes
+                or not is_within_bounds(next_position)
+            ):
+                continue
+
+            # Используем манхэттенскую эвристику
+            heuristic = manhattan_distance(next_position, target_position)
             heapq.heappush(
-                pq,
-                (cost + 1 + heuristic, next_position, first_step or direction)
+                pq, (cost + 1 + heuristic, next_position, first_step or direction)
             )
 
-    # Если пути к цели не найдено, спасаемся
+    # Если не нашли путь, возвращаем безопасное направление
     return find_safe_direction()
 
 

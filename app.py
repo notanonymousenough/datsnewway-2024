@@ -19,26 +19,29 @@ class App:
         Асинхронное управление игрой с оптимизацией обновлений.
         """
         # Получаем начальное состояние игры
+        # Получаем текущее время
+        current_time = time.time() * 1000
         game_state = await self.api.move(self.make_request())
+        new_tick_time = game_state["tickRemainMs"] + current_time
         self.snake_game = SnakeGame3D(game_state)  # Инициализация визуализации
 
         while True:
             print(game_state["snakes"])
-            # Получаем текущее время
-            current_time = int(time.time())
+            current_ns = time.time_ns()
             # Извлекаем змей для нового хода
             snakes = self.process_snakes(game_state)
-            print("proceed new snakes:", snakes)
+            print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
 
             # Получаем новое состояние
             req = self.make_request(snakes)
 
-            # Асинхронная задержка
-
             # Если прошла новая секунда, выполняем обработку
-            while current_time == int(time.time()):
+            while time.time()*1000 < new_tick_time:
                 pass
             game_state = await self.api.move(req)
+            # Получаем текущее время
+            current_time = time.time() * 1000
+            new_tick_time = game_state["tickRemainMs"] + current_time
             self.snake_game.game_state = game_state
 
             # Обновляем объекты на канвасах
@@ -81,8 +84,9 @@ class App:
             if len(snake.get("geometry", [])) > 0:
                 snakes.append({
                     "id": snake["id"],
-                    "direction": find_next_direction_safe(cubes, snake["geometry"][0])
+                    "direction": find_next_direction_safe(cubes, snake["geometry"][0], res["mapSize"])
                 })
+                print(f"proceed snake {snake["id"]}")
         return snakes
 
     def make_request(self, snakes=None):
