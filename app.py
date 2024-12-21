@@ -3,6 +3,7 @@ import operator
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 from new_visualizer import SnakeGame3D
 from vpython import rate
@@ -41,10 +42,8 @@ class App:
 
         while True:
             print(game_state["snakes"])
-            current_ns = time.time_ns()
             # Извлекаем змей для нового хода
             snakes, paths = self.process_snakes(game_state)
-            print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
             print("paths:", paths)
             self.snake_game.paths = paths
             # Получаем новое состояние
@@ -162,7 +161,7 @@ class App:
                     "direction": direction
                 })
                 paths[snake["id"]] = path
-                print(f"proceed snake {id}")
+                print(f"{str(datetime())} proceed snake {id} {str(direction)} {str(path)}")
 
         return snakes, paths
 

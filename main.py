@@ -4,7 +4,7 @@ from app import App
 
 with open("token", 'r') as file:
     TOKEN = file.read()
-DEBUG = True
+DEBUG = False
 MOCK = False
 
 

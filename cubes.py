@@ -86,6 +86,8 @@ class Cubes:
         heapq.heappush(pq, (0, current_position, [], None))  # (приоритет, позиция, путь, первый шаг)
         iteration_count = 0
 
+        best_first_step = None
+
         while pq:
             iteration_count += 1
             if iteration_count > max_iterations:
@@ -93,6 +95,7 @@ class Cubes:
                     # Если мы в режиме поиска цели и превышен лимит итераций, переключаемся на центр карты
                     print("[LOG] Переключение на центр карты из positive_target после превышения итераций.")
                     return evaluate_centering()
+
             if is_next_tick():
                 print("[LOG] Переключение на центр карты из positive_target после начала следующего тика.")
                 return evaluate_centering()
@@ -108,7 +111,9 @@ class Cubes:
 
             # Если достигли цели
             if position == list(target_position):
-                return first_step, path
+                if not best_first_step:
+                    best_first_step = first_step  # Зафиксировать первый шаг
+                return best_first_step, path
 
             # Обрабатываем каждое направление
             for direction in Cubes.directions:
@@ -116,13 +121,13 @@ class Cubes:
 
                 # Проверяем границы, статус препятствия и посещение
                 if (
-                    tuple(next_position) in visited
-                    or tuple(next_position) in negative_cubes
-                    or not Cubes.is_within_bounds(next_position, map_size)
+                        tuple(next_position) in visited
+                        or tuple(next_position) in negative_cubes
+                        or not Cubes.is_within_bounds(next_position, map_size)
                 ):
                     continue
 
-                # Используем манхэттенскую эвристику
+                # Используем эвристику: расстояние до цели
                 heuristic_to_target = distance(next_position, target_position)
                 heapq.heappush(
                     pq, (cost + 1 + heuristic_to_target, next_position, path, first_step or direction)
