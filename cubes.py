@@ -2,12 +2,14 @@ import heapq
 from math import sqrt
 
 
-def find_next_direction_safe(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=100000):
+def find_next_direction_to_center(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=10000):
     """
-    Функция с оптимизированным поиском пути через A*, ограничением итераций и эвристикой манхэттена.
+    Функция с добавлением приоритета для движения к центру карты.
     """
-
     directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+
+    # Центр карты
+    center_position = [map_size[i] / 2 for i in range(3)]
 
     def is_within_bounds(position):
         """Проверка, что позиция внутри границ карты."""
@@ -26,7 +28,7 @@ def find_next_direction_safe(cubes, current_position, map_size, search_radius=15
         return positive_cubes[0] if positive_cubes else None
 
     def manhattan_distance(a, b):
-        """Рассчитывает более простую манхэттенскую эвристику."""
+        """Рассчитывает манхэттенское расстояние."""
         return sum(abs(a[i] - b[i]) for i in range(3))
 
     def find_safe_direction():
@@ -47,10 +49,12 @@ def find_next_direction_safe(cubes, current_position, map_size, search_radius=15
         target = find_positive_target(search_radius)
 
     if not target:
-        # Если цель не найдена, возвращаем безопасное направление
-        return find_safe_direction()
-
-    target_position, _ = target
+        # Если цель не найдена, стремимся к центру карты
+        target_position = center_position
+        heuristic_mode = "centering"
+    else:
+        target_position, _ = target
+        heuristic_mode = "positive_target"
 
     # A* поиск пути
     visited = set()
@@ -62,7 +66,7 @@ def find_next_direction_safe(cubes, current_position, map_size, search_radius=15
         iteration_count += 1
         if iteration_count > max_iterations:
             # Если достигли предела по итерациям, возвращаем безопасное направление
-            print("[LOG] Превышено максимальное количество итераций в A*. Возвращаем безопасное направление.")
+            print(f"[LOG] Превышено максимальное количество итераций. Режим: {heuristic_mode}")
             return find_safe_direction()
 
         cost, position, first_step = heapq.heappop(pq)
@@ -87,8 +91,11 @@ def find_next_direction_safe(cubes, current_position, map_size, search_radius=15
             ):
                 continue
 
-            # Используем манхэттенскую эвристику
-            heuristic = manhattan_distance(next_position, target_position)
+            # Вычисляем эвристику с учётом расстояния до цели и до центра
+            heuristic_to_target = manhattan_distance(next_position, target_position)
+            heuristic_to_center = manhattan_distance(next_position, center_position)
+            heuristic = heuristic_to_target + 0.5 * heuristic_to_center
+
             heapq.heappush(
                 pq, (cost + 1 + heuristic, next_position, first_step or direction)
             )
