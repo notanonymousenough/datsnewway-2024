@@ -32,6 +32,10 @@ class Cubes:
             """Рассчитывает евклидово расстояние (или квадратичную метрику)."""
             return sqrt(sum((a[i] - b[i]) ** 2 for i in range(3)))
 
+        def is_adjacent_to_target(position, target_position):
+            """Проверяет, находится ли позиция рядом с целевой точкой."""
+            return distance(position, target_position) <= 1
+
         def evaluate_centering():
             """
             В режиме centering:
@@ -105,6 +109,14 @@ class Cubes:
             if tuple(position) in visited:
                 continue
             visited.add(tuple(position))
+
+            # Проверяем, достигли ли мы цели (находимся вплотную)
+            if is_adjacent_to_target(position, target_position):
+                # Если соседняя клетка — это цель, выбираем прямое направление
+                for direction in Cubes.directions:
+                    next_position = [position[i] + direction[i] for i in range(3)]
+                    if next_position == target_position:
+                        return direction, path + [target_position]
 
             # Добавляем текущую позицию в путь
             path = path + [position]
