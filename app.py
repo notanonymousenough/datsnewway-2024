@@ -6,7 +6,7 @@ from new_visualizer import SnakeGame3D
 from vpython import rate
 
 from api import Api
-from cubes import find_next_direction_safe
+from cubes_old import find_next_direction_optimized
 
 
 class App:
@@ -29,9 +29,10 @@ class App:
             print(game_state["snakes"])
             current_ns = time.time_ns()
             # Извлекаем змей для нового хода
-            snakes = self.process_snakes(game_state)
+            snakes, paths = self.process_snakes(game_state)
             print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
-
+            print(paths)
+            self.snake_game.paths = paths
             # Получаем новое состояние
             req = self.make_request(snakes)
 
@@ -80,14 +81,18 @@ class App:
         for suspicious in res["specialFood"]["suspicious"]:
             cubes.append(suspicious + [-50])
         print(f"got {str(len(cubes))} cubes")
+        paths = []
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
+                direction, path = find_next_direction_optimized(cubes, snake["geometry"][0], res["mapSize"])
                 snakes.append({
                     "id": snake["id"],
-                    "direction": find_next_direction_safe(cubes, snake["geometry"][0], res["mapSize"])
+                    "direction": direction
                 })
-                print(f"proceed snake {snake["id"]}")
-        return snakes
+                paths.append(path)
+                id = snake["id"]
+                print(f"proceed snake {id}")
+        return snakes, paths
 
     def make_request(self, snakes=None):
         if snakes is None:
