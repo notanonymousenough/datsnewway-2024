@@ -2,40 +2,69 @@ import heapq
 from math import sqrt
 
 
-def find_next_direction_optimized(cubes, current_position, search_radius=15):
+def find_next_direction_safe(cubes, current_position, search_radius=15, max_radius=100):
     """
-    Оптимизированная функция для выбора направления движения, исправляющая проблемы зацикливания.
+    Функция для определения безопасного направления движения,
+    с учётом необходимости избегания стенок (отрицательных кубов)
+    и расширения радиуса в случае отсутствия целей.
 
     :param cubes: Список кубов, каждый элемент - [x, y, z, price]
     :param current_position: Текущая позиция нашего куба [x, y, z]
-    :param search_radius: Радиус для учета ближайших кубов (ускоряет поиск)
+    :param search_radius: Начальный радиус поиска
+    :param max_radius: Максимально допустимый радиус (чтобы избежать бесконечных расширений)
     :return: Вектор направления движения [dx, dy, dz]
     """
     directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
 
+    def find_positive_target(radius):
+        """
+        Ищет ближайший положительный куб в пределах указанного радиуса.
+        Возвращает цель и её позицию.
+        """
+        positive_cubes = [
+            (cube[:3], cube[3])
+            for cube in cubes
+            if cube[3] > 0 and distance(current_position, cube[:3]) <= radius
+        ]
+
+        # Сортируем положительные кубы по убыванию цены и минимальному расстоянию
+        positive_cubes.sort(key=lambda x: (-x[1], distance(current_position, x[0])))
+
+        return positive_cubes[0] if positive_cubes else None
+
+    def find_safe_direction():
+        """
+        Находит любое безопасное направление для движения.
+        """
+        safe_directions = []
+        for direction in directions:
+            next_position = [current_position[i] + direction[i] for i in range(3)]
+            if tuple(next_position) not in negative_cubes:
+                safe_directions.append(direction)
+
+        # Если нет негативной позиции, выбираем любое безопасное направление
+        return safe_directions[0] if safe_directions else (1, 0, 0)  # По умолчанию "идём вперёд"
+
     # Разделяем кубы на положительные и отрицательные
-    positive_cubes = [
-        (cube[:3], cube[3])
-        for cube in cubes
-        if cube[3] > 0 and distance(current_position, cube[:3]) <= search_radius
-    ]
     negative_cubes = set(tuple(cube[:3]) for cube in cubes if cube[3] <= 0)
+    target = find_positive_target(search_radius)
 
-    if not positive_cubes:
-        return (0, 0, 0)  # Если положительных кубов нет, остаёмся на месте
+    # Если целей нет в пределах текущего радиуса
+    while not target and search_radius <= max_radius:
+        search_radius *= 2  # Увеличиваем радиус вдвое
+        target = find_positive_target(search_radius)
 
-    # Сортируем положительные кубы на основе "цена / расстояние"
-    positive_cubes.sort(key=lambda x: (-x[1], distance(current_position, x[0])))
+    if not target:
+        # Спасаемся, если нет целей даже после расширения радиуса
+        return find_safe_direction()
 
-    # Берём ближайший максимально ценностный куб
-    target_position, _ = positive_cubes[0]
+    target_position, _ = target
 
-    # Priority Queue для поиска пути
+    # A* для поиска пути к цели
     visited = set()
     pq = []
     heapq.heappush(pq, (0, current_position, None))  # Начальная позиция с нулевой стоимостью
 
-    # A* с приоритетами
     while pq:
         cost, position, first_step = heapq.heappop(pq)
 
@@ -60,8 +89,8 @@ def find_next_direction_optimized(cubes, current_position, search_radius=15):
                 (cost + 1 + heuristic, next_position, first_step or direction)
             )
 
-    # Если пути вообще не найдено, остаёмся на месте
-    return (0, 0, 0)
+    # Если пути к цели не найдено, спасаемся
+    return find_safe_direction()
 
 
 def distance(a, b):

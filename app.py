@@ -6,7 +6,7 @@ from new_visualizer import SnakeGame3D
 from vpython import rate
 
 from api import Api
-from cubes import find_next_direction_optimized
+from cubes import find_next_direction_safe
 
 
 class App:
@@ -51,21 +51,23 @@ class App:
         for fence in res["fences"]:
             cubes.append(fence + [-100])
         for enemy in res["enemies"]:
+            if len(enemy.get("geometry", [])) == 0:
+                continue
             for cube in enemy["geometry"]:
                 cubes.append(cube + [-100])
-        for snake in res["snakes"]:
-            if len(snake.get("geometry", [])) == 0:
-                continue
-            for cube in snake["geometry"]:
-                cubes.append(cube + [-100])
             # голова может сдвинуться в любую сторону, учитываем
-            head = snake["geometry"][0]
+            head = enemy["geometry"][0]
             cubes.append([head[0]-1, head[1], head[2], -75])
             cubes.append([head[0]+1, head[1], head[2], -75])
             cubes.append([head[0], head[1]-1, head[2], -75])
             cubes.append([head[0], head[1]+1, head[2], -75])
             cubes.append([head[0], head[1], head[2]-1, -75])
             cubes.append([head[0], head[1], head[2]+1, -75])
+        for snake in res["snakes"]:
+            if len(snake.get("geometry", [])) == 0:
+                continue
+            for cube in snake["geometry"]:
+                cubes.append(cube + [-100])
         for food in res["food"]:
             if food["points"] > maxFoodPrice:
                 maxFoodPrice = food["points"]
@@ -79,7 +81,7 @@ class App:
             if len(snake.get("geometry", [])) > 0:
                 snakes.append({
                     "id": snake["id"],
-                    "direction": find_next_direction_optimized(cubes, snake["geometry"][0])
+                    "direction": find_next_direction_safe(cubes, snake["geometry"][0])
                 })
         return snakes
 
