@@ -7,7 +7,7 @@ class Cubes:
 
     @staticmethod
     def find_next_direction_to_center(
-        cubes, current_position, map_size, search_radius=15, max_radius=64,
+        cubes, current_position, map_size, is_next_tick, search_radius=15, max_radius=64,
         max_iterations=1000
     ):
         """
@@ -93,6 +93,9 @@ class Cubes:
                     # Если мы в режиме поиска цели и превышен лимит итераций, переключаемся на центр карты
                     print("[LOG] Переключение на центр карты из positive_target после превышения итераций.")
                     return evaluate_centering()
+            if is_next_tick():
+                print("[LOG] Переключение на центр карты из positive_target после начала следующего тика.")
+                return evaluate_centering()
 
             cost, position, path, first_step = heapq.heappop(pq)
 

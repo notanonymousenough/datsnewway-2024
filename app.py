@@ -112,7 +112,7 @@ class App:
                     print("new tick! running find_safe_direction")
                     direction, path = Cubes.find_safe_direction(snake["geometry"][0], negative_cubes, res["mapSize"])
                 else:
-                    direction, path = Cubes.find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"])
+                    direction, path = Cubes.find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"], self.is_new_tick)
                 snakes.append({
                     "id": snake["id"],
                     "direction": direction
