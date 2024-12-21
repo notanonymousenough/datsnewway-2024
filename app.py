@@ -28,15 +28,16 @@ class App:
             game_state = await self.api.move(self.make_request())
         new_tick_time = game_state["tickRemainMs"] + current_time
         self.snake_game = SnakeGame3D(game_state)  # Инициализация визуализации
+        previous_paths = None
 
         while True:
             print(game_state["snakes"])
             current_ns = time.time_ns()
             # Извлекаем змей для нового хода
-            snakes, paths = self.process_snakes(game_state)
+            snakes, previous_paths = self.process_snakes(game_state, previous_paths)
             print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
-            print("paths:", paths)
-            self.snake_game.paths = paths
+            print("paths:", previous_paths)
+            self.snake_game.paths = previous_paths
             # Получаем новое состояние
             req = self.make_request(snakes)
 
@@ -51,12 +52,11 @@ class App:
             # Получаем текущее время
             current_time = time.time() * 1000
             new_tick_time = game_state["tickRemainMs"] + current_time
-            self.snake_game.game_state = game_state
-
             # Обновляем объекты на канвасах
             self.snake_game.visualize_all()
+            self.snake_game.game_state = game_state
 
-    def process_snakes(self, res):
+    def process_snakes(self, res, previous_paths=None):
         snakes = []
         cubes = []
         maxFoodPrice = 0
@@ -89,16 +89,19 @@ class App:
         for suspicious in res["specialFood"]["suspicious"]:
             cubes.append(suspicious + [-50])
         print(f"got {str(len(cubes))} cubes")
-        paths = []
+        paths = {}
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
-                direction, path = find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"])
+                id = snake["id"]
+                path = None
+                if previous_paths is not None:
+                    path = previous_paths.get(id, [])
+                direction, path = find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"], previous_path=path)
                 snakes.append({
                     "id": snake["id"],
                     "direction": direction
                 })
-                paths.append(path)
-                id = snake["id"]
+                paths[snake["id"]] = path
                 print(f"proceed snake {id}")
         return snakes, paths
 

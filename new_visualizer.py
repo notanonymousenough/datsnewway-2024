@@ -12,7 +12,7 @@ class SnakeGame3D:
         self.game_state = game_state
         self.fps = fps  # Число кадров в секунду
         self.canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
-        self.paths = []
+        self.paths = {}
         snakes_count = len(game_state["snakes"])
         # Проверяем, созданы ли уже канвасы
         if len(self.canvas_instances) == 0:
@@ -89,13 +89,17 @@ class SnakeGame3D:
                 self.draw_object(canvas_instance, position=segment, size=vector(1, 1, 1),
                                  color_value=seg_color, canvas_id=canvas_id, key=tuple(segment))
 
-    def draw_paths(self, canvas_instance, canvas_id):
-        for path in self.paths:
-            crop_path = path[1:-1]
-            for segment in crop_path:
-                seg_color = color.black
-                self.draw_object(canvas_instance, position=segment, size=vector(1, 1, 1),
-                                 color_value=seg_color, canvas_id=canvas_id, key=tuple(segment))
+    def draw_paths(self, canvas_instance, canvas_id, snake_id):
+        path = self.paths.get(snake_id, [])
+        if len(path) < 2:
+            return
+        crop_path = path[1:]
+        if len(path) >= 3:
+            crop_path = crop_path[:-1]
+        for segment in crop_path:
+            seg_color = color.black
+            self.draw_object(canvas_instance, position=segment, size=vector(1, 1, 1),
+                             color_value=seg_color, canvas_id=canvas_id, key=tuple(segment))
 
     def parse_color_by_points(self, points):
         if points <= 0:
@@ -111,7 +115,7 @@ class SnakeGame3D:
         self.draw_food(canvas_instance, canvas_id)
         self.draw_snake(canvas_instance, canvas_id, snake)
         self.draw_enemies(canvas_instance, canvas_id)
-        self.draw_paths(canvas_instance, canvas_id)
+        self.draw_paths(canvas_instance, canvas_id, snake["id"])
 
     def visualize_all(self):
         for i, snake in enumerate(self.game_state["snakes"]):
