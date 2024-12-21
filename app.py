@@ -6,7 +6,7 @@ from new_visualizer import SnakeGame3D
 from vpython import rate
 
 from api import Api
-from cubes_old import find_next_direction_optimized
+from cubes import find_next_direction_to_center
 
 
 class App:
@@ -35,7 +35,7 @@ class App:
             # Извлекаем змей для нового хода
             snakes, paths = self.process_snakes(game_state)
             print(f"proceed new snakes [{str(time.time_ns()-current_ns)}ns]:", snakes)
-            print(paths)
+            print("paths:", paths)
             self.snake_game.paths = paths
             # Получаем новое состояние
             req = self.make_request(snakes)
@@ -92,7 +92,7 @@ class App:
         paths = []
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
-                direction, path = find_next_direction_optimized(cubes, snake["geometry"][0], res["mapSize"])
+                direction, path = find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"])
                 snakes.append({
                     "id": snake["id"],
                     "direction": direction
