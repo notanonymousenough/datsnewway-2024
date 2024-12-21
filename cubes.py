@@ -2,7 +2,7 @@ import heapq
 from math import sqrt
 
 
-def find_next_direction_safe(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=10000):
+def find_next_direction_safe(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=100000):
     """
     Функция с оптимизированным поиском пути через A*, ограничением итераций и эвристикой манхэттена.
     """

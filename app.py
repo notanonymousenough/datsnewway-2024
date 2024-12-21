@@ -22,6 +22,10 @@ class App:
         # Получаем текущее время
         current_time = time.time() * 1000
         game_state = await self.api.move(self.make_request())
+        while game_state is None:
+            await asyncio.sleep(0.5)
+            print("retrying...")
+            game_state = await self.api.move(self.make_request())
         new_tick_time = game_state["tickRemainMs"] + current_time
         self.snake_game = SnakeGame3D(game_state)  # Инициализация визуализации
 
@@ -40,6 +44,10 @@ class App:
             while time.time()*1000 < new_tick_time:
                 pass
             game_state = await self.api.move(req)
+            while game_state is None:
+                await asyncio.sleep(0.5)
+                print("retrying...")
+                game_state = await self.api.move(req)
             # Получаем текущее время
             current_time = time.time() * 1000
             new_tick_time = game_state["tickRemainMs"] + current_time
