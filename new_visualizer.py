@@ -3,7 +3,7 @@ from vpython import canvas, vector, box, color, rate
 
 class SnakeGame3D:
 
-    def __init__(self, game_state, fps=10, snakes_count=3):
+    def __init__(self, game_state, fps=10):
         """
         Инициализация визуализации игры с добавлением канвасов.
         :param game_state: Начальное состояние игры.
@@ -13,7 +13,7 @@ class SnakeGame3D:
         self.fps = fps  # Число кадров в секунду
         self.canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
         self.paths = []
-
+        snakes_count = len(game_state["snakes"])
         # Проверяем, созданы ли уже канвасы
         if len(self.canvas_instances) == 0:
             for i in range(snakes_count):

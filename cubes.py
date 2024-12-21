@@ -2,7 +2,7 @@ import heapq
 from math import sqrt
 
 
-def find_next_direction_to_center(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=10000):
+def find_next_direction_to_center(cubes, current_position, map_size, search_radius=15, max_radius=64, max_iterations=100000):
     """
     Ищет следующий шаг для движения к положительному кубу или к центру карты,
     а также возвращает полный путь до выбранной цели.
