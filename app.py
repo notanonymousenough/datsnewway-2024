@@ -161,7 +161,7 @@ class App:
                     "direction": direction
                 })
                 paths[snake["id"]] = path
-                print(f"{str(datetime())} proceed snake {id} {str(direction)} {str(path)}")
+                print(f"proceed snake {id} {str(direction)} {str(path)}")
 
         return snakes, paths
 
