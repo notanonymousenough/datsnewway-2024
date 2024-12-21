@@ -1,6 +1,8 @@
 import asyncio
+import operator
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from new_visualizer import SnakeGame3D
 from vpython import rate
@@ -49,9 +51,12 @@ class App:
             req = self.make_request(snakes)
 
             # Если прошла новая секунда, выполняем обработку
+            print("LOOP BEFORE WHILE:", (time.time() * 1000 - current_time)/1000)
             while not self.is_new_tick():
                 pass
+            print("LOOP AFTER WHILE:", (time.time() * 1000 - current_time)/1000)
             game_state = await self.api.move(req)
+            print("LOOP AFTER CALL:", (time.time() * 1000 - current_time)/1000)
             while game_state is None:
                 await asyncio.sleep(0.5)
                 print("retrying...")
@@ -92,7 +97,7 @@ class App:
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) == 0:
                 continue
-            for cube in snake["geometry"]:
+            for cube in snake["geometry"][1:]:
                 cubes.append(cube + [-100])
         for food in res["food"]:
             if food["points"] > maxFoodPrice:
@@ -104,7 +109,45 @@ class App:
             cubes.append(suspicious + [-50])
         print(f"got {str(len(cubes))} cubes")
         negative_cubes = set(tuple(cube[:3]) for cube in cubes if cube[3] <= 0)
+
         paths = {}
+
+        # threads
+        # with ThreadPoolExecutor() as executor:
+        #     future_to_snake = {}
+        #
+        #     for snake in res["snakes"]:
+        #         if len(snake.get("geometry", [])) > 0:
+        #             id = snake["id"]
+        #             if self.is_new_tick():
+        #                 print("new tick! running find_safe_direction")
+        #                 future = executor.submit(Cubes.find_safe_direction,
+        #                                          snake["geometry"][0],
+        #                                          negative_cubes,
+        #                                          res["mapSize"])
+        #             else:
+        #                 future = executor.submit(Cubes.find_next_direction_to_center,
+        #                                          cubes,
+        #                                          snake["geometry"][0],
+        #                                          res["mapSize"],
+        #                                          self.is_new_tick)
+        #
+        #             future_to_snake[future] = id
+        #
+        #             # Collect results as they complete
+        #     for future in as_completed(future_to_snake):
+        #         id = future_to_snake[future]
+        #         try:
+        #             direction, path = future.result()
+        #             snakes.append({
+        #                 "id": id,
+        #                 "direction": direction
+        #             })
+        #             paths[id] = path
+        #             print(f"proceed snake {id}")
+        #         except Exception as exc:
+        #             print(f"Snake {id} generated an exception: {exc}")
+
         for snake in res["snakes"]:
             if len(snake.get("geometry", [])) > 0:
                 id = snake["id"]
@@ -112,13 +155,15 @@ class App:
                     print("new tick! running find_safe_direction")
                     direction, path = Cubes.find_safe_direction(snake["geometry"][0], negative_cubes, res["mapSize"])
                 else:
-                    direction, path = Cubes.find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"], self.is_new_tick)
+                    direction, path = Cubes.find_next_direction_to_center(cubes, snake["geometry"][0], res["mapSize"],
+                                                                          self.is_new_tick)
                 snakes.append({
                     "id": snake["id"],
                     "direction": direction
                 })
                 paths[snake["id"]] = path
                 print(f"proceed snake {id}")
+
         return snakes, paths
 
     def make_request(self, snakes=None):

@@ -15,6 +15,7 @@ class SnakeGame3D:
         self.canvas_instances = []  # Статический атрибут для хранения всех созданных канвасов
         self.paths = {}
         snakes_count = len(game_state["snakes"])
+        print(f"got {str(snakes_count)} snakes")
         # Проверяем, созданы ли уже канвасы
         if len(self.canvas_instances) == 0:
             for i in range(snakes_count):
@@ -127,8 +128,9 @@ class SnakeGame3D:
 
     async def visualize_all_async(self):
         rate(self.fps)
+        print(f"visualizing {str(len(self.game_state["snakes"]))} snakes")
         tasks = [self.visualize_async(self.canvas_instances[i], i, snake)
-                 for i, snake in enumerate(self.game_state["snakes"])]
+                     for i, snake in enumerate(self.game_state["snakes"])]
         await asyncio.gather(*tasks)
 
     async def visualize_async(self, canvas_instance, canvas_id, snake):

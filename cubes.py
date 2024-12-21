@@ -8,7 +8,7 @@ class Cubes:
     @staticmethod
     def find_next_direction_to_center(
         cubes, current_position, map_size, is_next_tick, search_radius=15, max_radius=64,
-        max_iterations=1000
+        max_iterations=1000000
     ):
         """
         Ищет следующий шаг для движения к положительному кубу или к центру карты.
@@ -78,7 +78,7 @@ class Cubes:
             print("[LOG] Режим centering: минимизация расстояния до центра.")
             return evaluate_centering()
 
-        print("[LOG] found target")
+        print("[LOG] found target", target)
         # Если цель найдена, мы строим путь к ней
         target_position, _ = target
         visited = set()
