@@ -3,7 +3,7 @@ from vpython import canvas, vector, box, color, rate
 
 class SnakeGame3D:
 
-    def __init__(self, game_state, fps=10, snakes_count=5):
+    def __init__(self, game_state, fps=10, snakes_count=3):
         """
         Инициализация визуализации игры с добавлением канвасов.
         :param game_state: Начальное состояние игры.
